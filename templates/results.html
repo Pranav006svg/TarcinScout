@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="results-header">
+    <div>
+        <h1 class="gradient-text">Scraped Contacts Database</h1>
+        <p class="results-subtitle">Manage, search, and export collected professional details.</p>
+    </div>
+    <div class="results-actions">
+        <a href="{{ url_for('export_zip_csv') }}" class="btn btn-emerald-outline" title="Download separate CSV files in a ZIP archive">
+            <i class="fa-solid fa-file-zipper"></i> Export CSVs (ZIP)
+        </a>
+        <a href="{{ url_for('export_grouped_excel') }}" class="btn btn-gold" title="Download Excel workbook with a sheet for each college">
+            <i class="fa-solid fa-file-excel"></i> Export Grouped Excel
+        </a>
+        <form action="{{ url_for('clear') }}" method="POST" class="inline-form" id="clear-form">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to clear all stored scraped contacts? This action is irreversible.');">
+                <i class="fa-solid fa-trash-can"></i> Clear All
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if contacts %}
+<!-- Stats Board -->
+<div class="stats-row">
+    <div class="glass-card stat-card">
+        <span class="stat-num gold-text">{{ contacts|length }}</span>
+        <span class="stat-label">Total Contacts</span>
+    </div>
+    <div class="glass-card stat-card">
+        <span class="stat-num rose-text">
+            {{ contacts | map(attribute='email') | select('defined') | list | length }}
+        </span>
+        <span class="stat-label">Emails Extracted</span>
+    </div>
+    <div class="glass-card stat-card">
+        <span class="stat-num emerald-text">
+            {{ contacts | selectattr('phone', 'ne', 'N/A') | list | length }}
+        </span>
+        <span class="stat-label">Phone Numbers</span>
+    </div>
+</div>
+
+<!-- Search & Filter Controls -->
+<div class="filter-bar glass-card" style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="search-input-wrapper" style="width: 100%;">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="table-search" placeholder="Search by name, college, email, or department...">
+    </div>
+    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+        <div class="role-filter-group">
+            <span class="filter-label">Quick Filter:</span>
+            <button class="filter-chip active" data-role="All">All Roles</button>
+            <button class="filter-chip" data-role="Principal">Principal</button>
+            <button class="filter-chip" data-role="HOD">HOD</button>
+            <button class="filter-chip" data-role="Placement Officer">Placement Officer</button>
+            <button class="filter-chip" data-role="Faculty/Staff">Faculty & Staff</button>
+        </div>
+        <div class="type-filter-group" style="display: flex; align-items: center; gap: 8px;">
+            <span class="filter-label">College Type:</span>
+            <button class="type-chip active" data-type="All" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s ease;">All Types</button>
+            <button class="type-chip" data-type="Government" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s ease;">Government</button>
+            <button class="type-chip" data-type="Private" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s ease;">Private</button>
+            <button class="type-chip" data-type="Autonomous" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s ease;">Autonomous</button>
+            <button class="type-chip" data-type="Deemed" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s ease;">Deemed</button>
+        </div>
+    </div>
+</div>
+
+<!-- Grouped College Scraped Data -->
+<div class="grouped-results-container" id="grouped-results-container">
+    {% for group in contacts | groupby('college_name') %}
+    <div class="college-group-card glass-card" data-college="{{ group.grouper | lower }}" data-college-type="{{ group.list[0].college_type | default('Private') }}">
+        <div class="college-group-header" onclick="toggleCollegeGroup(this)">
+            <div class="college-info-summary">
+                <i class="fa-solid fa-graduation-cap college-icon"></i>
+                <div>
+                    <h3 class="college-name-text" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        {{ group.grouper }}
+                        {% if group.list and group.list[0].college_type %}
+                        <span class="type-badge badge-{{ group.list[0].college_type.lower() }}" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3);">
+                            {{ group.list[0].college_type }}
+                        </span>
+                        {% endif %}
+                    </h3>
+                    {% if group.list and group.list[0].website_url %}
+                    <a href="{{ group.list[0].website_url }}" target="_blank" class="college-web-link" onclick="event.stopPropagation()">
+                        <i class="fa-solid fa-link"></i> {{ group.list[0].website_url.replace('https://', '').replace('http://', '').replace('www.', '') }}
+                    </a>
+                    {% endif %}
+                    {% if group.list and group.list[0].custom_notes and group.list[0].custom_notes != 'General Search' and group.list[0].custom_notes != 'Regex Fallback' %}
+                    <span class="directives-badge" style="font-size: 11px; color: var(--text-secondary); display: block; margin-top: 4px;">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="color: #a78bfa;"></i> Directives: "{{ group.list[0].custom_notes }}"
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="college-meta-summary">
+                <div class="college-group-actions" onclick="event.stopPropagation()">
+                    <a href="{{ url_for('export_college_excel', college=group.grouper) }}" class="btn-action btn-excel" title="Export this college to Excel">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </a>
+                    <a href="{{ url_for('export_college_csv', college=group.grouper) }}" class="btn-action btn-csv" title="Export this college to CSV">
+                        <i class="fa-solid fa-file-csv"></i>
+                    </a>
+                    <button class="btn-action btn-delete-college" onclick="deleteCollegeGroup('{{ group.grouper }}', this)" title="Delete all contacts for this college">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+                <span class="badge badge-contacts">{{ group.list|length }} Contacts</span>
+                <i class="fa-solid fa-chevron-down toggle-arrow"></i>
+            </div>
+        </div>
+        
+        <div class="college-group-content">
+            <div class="table-container">
+                <table class="contacts-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Email Address</th>
+                            <th>Phone</th>
+                            <th>Office Address</th>
+                            <th>Source</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contact in group.list %}
+                        <tr data-role="{{ contact.role }}" data-contact-id="{{ contact.id }}">
+                            <td class="col-name font-weight-bold">{{ contact.person_name }}</td>
+                            <td class="col-role">
+                                <span class="role-badge badge-{{ contact.role.lower().replace(' ', '-') }}">
+                                    {{ contact.role }}
+                                </span>
+                            </td>
+                            <td>{{ contact.department }}</td>
+                            <td class="col-email">
+                                <div class="copy-field">
+                                    <span class="email-text">{{ contact.email }}</span>
+                                    <button class="copy-btn" onclick="copyText('{{ contact.email }}', this)" title="Copy Email">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="col-phone">
+                                <div class="copy-field">
+                                    <span>{{ contact.phone }}</span>
+                                    {% if contact.phone != 'N/A' %}
+                                    <button class="copy-btn" onclick="copyText('{{ contact.phone }}', this)" title="Copy Phone">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="col-address">
+                                <span class="truncated-address" title="{{ contact.address }}">{{ contact.address }}</span>
+                            </td>
+                            <td class="col-date">
+                                <a href="{{ contact.source_url }}" target="_blank" class="source-link-icon" title="View Source Page: {{ contact.source_url }}">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                                <span class="date-text">{{ contact.scraped_at.split(' ')[0] }}</span>
+                            </td>
+                            <td class="col-actions">
+                                <button class="btn-action btn-delete-contact" onclick="deleteContactRow('{{ contact.id }}', this)" title="Delete this contact">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    
+    <div class="no-results" id="no-results" style="display: none;">
+        <i class="fa-solid fa-ban"></i>
+        <p>No contacts match the search or filter criteria.</p>
+    </div>
+</div>
+
+{% else %}
+<!-- Empty Database Layout -->
+<div class="glass-card empty-state">
+    <i class="fa-solid fa-database-slash gold-text"></i>
+    <h2>Database is Empty</h2>
+    <p>No contact details have been scraped yet. Head back to the homepage to run your first scraping query.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-gold">
+        <i class="fa-solid fa-circle-play"></i> Go to Scraper
+    </a>
+</div>
+{% endif %}
+{% endblock %}

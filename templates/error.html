@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="error-container">
+    <div class="glass-card error-card">
+        <div class="error-icon-wrapper">
+            <i class="fa-solid fa-triangle-exclamation rose-text"></i>
+        </div>
+        <h1 class="rose-text">{{ error_title or "An Error Occurred" }}</h1>
+        <p class="error-message">{{ error_message or "We encountered an unexpected problem while crawling this site." }}</p>
+        
+        {% if target_url %}
+        <div class="error-target-box">
+            <span class="label">Target Website:</span>
+            <span class="value">{{ target_url }}</span>
+        </div>
+        {% endif %}
+
+        <div class="troubleshooting-card">
+            <h3><i class="fa-solid fa-circle-question gold-text"></i> Troubleshooting Tips:</h3>
+            <ul>
+                <li>Verify if the college website URL is correct and active by opening it in another tab.</li>
+                <li>Some academic websites block automatic scrapers or require custom IP configurations.</li>
+                <li>The website might be heavily reliant on JavaScript to display faculty pages. The scraper is currently limited to parsed HTML.</li>
+                <li>A timeout occurred (server did not respond within 10 seconds). Try again in a few moments.</li>
+            </ul>
+        </div>
+
+        <div class="error-actions">
+            <a href="{{ url_for('index') }}" class="btn btn-gold">
+                <i class="fa-solid fa-arrow-left"></i> Go Back Home
+            </a>
+            {% if target_url %}
+            <form action="{{ url_for('scrape') }}" method="POST" class="inline-form" id="retry-form">
+                <input type="hidden" name="url" value="{{ target_url }}">
+                <button type="submit" class="btn btn-emerald-outline">
+                    <i class="fa-solid fa-arrows-rotate"></i> Retry Scrape
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay (Visible during retries) -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content glass-card">
+        <div class="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="spider-spinner">
+                <img src="{{ url_for('static', filename='images/tarcin-t-logo.png') }}" alt="TarcinScout Logo" class="spinner-logo">
+            </div>
+        </div>
+        <h2>Scraping Domain...</h2>
+        <p class="loading-status" id="loading-status-text">Reconnecting to server and parsing homepage links...</p>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <div class="tips-container">
+            <p class="tip-text"><i class="fa-solid fa-lightbulb gold-text"></i> <span>Polite delay (0.5s) is active to prevent server overloading.</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

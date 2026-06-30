@@ -1,0 +1,402 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="results-header">
+    <div>
+        <h1 class="gradient-text">Refinement Complete</h1>
+        <p class="results-subtitle">Successfully cleaned and standardized contact sheet: <strong class="gold-text">{{ orig_filename }}</strong></p>
+    </div>
+    <div class="results-actions">
+        <a href="{{ url_for('refiner') }}" class="btn btn-gold-outline">
+            <i class="fa-solid fa-arrow-left"></i> Refine Another
+        </a>
+        <a href="{{ url_for('refiner_export', export_format='csv', file_id=file_id) }}" class="btn btn-emerald-outline">
+            <i class="fa-solid fa-file-csv"></i> Download CSV
+        </a>
+        <a href="{{ url_for('refiner_export', export_format='excel', file_id=file_id) }}" class="btn btn-gold">
+            <i class="fa-solid fa-file-excel"></i> Download Excel
+        </a>
+    </div>
+</div>
+
+<!-- Refiner Metrics Cards -->
+<div class="stats-row">
+    <div class="glass-card stat-card">
+        <span class="stat-num gold-text">{{ metrics.total_rows_cleaned }}</span>
+        <span class="stat-label">Cleaned Rows (out of {{ metrics.total_rows_received }} raw)</span>
+    </div>
+    <div class="glass-card stat-card">
+        <span class="stat-num rose-text">{{ metrics.duplicates_removed }}</span>
+        <span class="stat-label">Duplicates Removed</span>
+    </div>
+    <div class="glass-card stat-card">
+        <span class="stat-num emerald-text">{{ metrics.phones_standardized }}</span>
+        <span class="stat-label">Phones Standardized</span>
+    </div>
+    <div class="glass-card stat-card">
+        <span class="stat-num rose-text">{{ metrics.invalid_emails_removed }}</span>
+        <span class="stat-label">Junk Records Filtered</span>
+    </div>
+</div>
+
+<!-- AI Query Assistant -->
+<div class="glass-card ai-query-card" style="margin-top: 24px; padding: 20px; background: rgba(139, 92, 246, 0.03); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: var(--radius-md);">
+    <h3 style="color: #c084fc; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; font-family: var(--font-header);">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> AI Dataset Query Assistant
+    </h3>
+    <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 16px; line-height: 1.5;">
+        Ask natural language questions to filter this refined dataset. (e.g., <em>"show all HODs"</em>, <em>"show colleges in Chennai"</em>, <em>"find placement officers"</em>, <em>"show contacts with valid emails"</em>).
+    </p>
+    <div class="input-group-row" style="display: flex; gap: 10px;">
+        <div class="input-wrapper" style="flex: 1; position: relative; display: flex; align-items: center;">
+            <i class="fa-solid fa-message" style="position: absolute; left: 14px; color: #8b5cf6;"></i>
+            <input type="text" id="ai-dataset-query" placeholder="Ask AI to filter or find specific records in this sheet..." style="width: 100%; padding: 12px 14px 12px 42px; background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);">
+        </div>
+        <button id="btn-submit-dataset-query" class="btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #fff; padding: 0 24px; border: none; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; transition: var(--transition);">
+            <i class="fa-solid fa-circle-play"></i> Filter
+        </button>
+    </div>
+    <div id="ai-query-status" style="margin-top: 12px; font-size: 13px; color: var(--text-secondary); display: none; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-spinner fa-spin" style="color: #c084fc;"></i> Translating question to SQL and querying sheet...
+    </div>
+    <div id="ai-query-active-filter" style="margin-top: 14px; display: none; align-items: center; gap: 12px;">
+        <span style="font-size: 12px; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #c084fc; padding: 6px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-filter"></i> <span id="active-filter-text">Active Filter</span>
+        </span>
+        <button id="btn-reset-dataset-query" class="btn btn-sm btn-danger-outline" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);">
+            <i class="fa-solid fa-times"></i> Reset Filter
+        </button>
+    </div>
+</div>
+
+<div class="results-preview-section" style="margin-top: 30px;">
+    <!-- Tab Controls -->
+    <div class="tabs-header" style="margin-bottom: 20px; border-bottom: 1px solid var(--border-glass); padding-bottom: 1px; display: flex; gap: 12px;">
+        <button class="tab-btn active" data-tab="preview-clean-tab" style="padding: 12px 20px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: var(--transition);">
+            <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Cleaned Contacts 
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 6px; border-radius: 10px; font-size: 11px;">
+                {{ preview_data|length }}{% if metrics.total_rows_cleaned > preview_data|length %}+{% endif %}
+            </span>
+        </button>
+        <button class="tab-btn" data-tab="preview-removed-tab" style="padding: 12px 20px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: var(--transition);">
+            <i class="fa-solid fa-circle-xmark" style="color: #ef4444;"></i> Removed & Duplicates 
+            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; padding: 2px 6px; border-radius: 10px; font-size: 11px;">
+                {{ removed_data|length }}{% if (metrics.duplicates_removed + metrics.invalid_emails_removed) > removed_data|length %}+{% endif %}
+            </span>
+        </button>
+    </div>
+
+    <!-- Clean Tab Content -->
+    <div class="tab-content active" id="preview-clean-tab">
+        <!-- AI Filtered Table Area (Hidden by default) -->
+        <div id="ai-query-results-area" style="display: none; margin-bottom: 20px; animation: fadeIn 0.3s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <h4 style="color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--font-header);">
+                    <i class="fa-solid fa-wand-magic-sparkles" style="color: #8b5cf6;"></i> AI Filtered Results 
+                    <span style="font-size: 13px; font-weight: normal; color: var(--text-secondary);">(<span id="ai-filtered-count">0</span> matching rows)</span>
+                </h4>
+                <small style="color: var(--text-muted); font-family: monospace; font-size: 11px;" id="ai-generated-sql">SELECT * FROM ...</small>
+            </div>
+            <div class="table-container glass-card" style="max-height: 450px; overflow-y: auto;">
+                <table class="contacts-table" id="ai-filtered-table">
+                    <thead>
+                        <tr>
+                            {% for col in columns %}
+                            <th>
+                                {% if col == 'college_name' %}College Name
+                                {% elif col == 'website_url' %}Website URL
+                                {% elif col == 'person_name' %}Contact Name
+                                {% elif col == 'role' %}Role
+                                {% elif col == 'department' %}Department
+                                {% elif col == 'email' %}Email Address
+                                {% elif col == 'phone' %}Phone
+                                {% elif col == 'address' %}Address
+                                {% elif col == 'source_url' %}Source URL
+                                {% else %}{{ col }}
+                                {% endif %}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Default Refined Contacts Preview -->
+        <div id="default-clean-preview-area">
+            <div style="margin-bottom: 12px;">
+                <h4 style="color: var(--text-primary); margin: 0; font-family: var(--font-header);"><i class="fa-solid fa-magnifying-glass-chart"></i> Cleaned Data Preview <span class="preview-note">(showing first {{ preview_data|length }} records)</span></h4>
+            </div>
+            
+            {% if preview_data %}
+            <div class="table-container glass-card" style="max-height: 450px; overflow-y: auto;">
+                <table class="contacts-table">
+                    <thead>
+                        <tr>
+                            {% for col in columns %}
+                            <th>
+                                {% if col == 'college_name' %}College Name
+                                {% elif col == 'website_url' %}Website URL
+                                {% elif col == 'person_name' %}Contact Name
+                                {% elif col == 'role' %}Role
+                                {% elif col == 'department' %}Department
+                                {% elif col == 'email' %}Email Address
+                                {% elif col == 'phone' %}Phone
+                                {% elif col == 'address' %}Address
+                                {% elif col == 'source_url' %}Source URL
+                                {% else %}{{ col }}
+                                {% endif %}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview_data %}
+                        <tr>
+                            {% for col in columns %}
+                            <td>
+                                {% if col == 'email' %}
+                                    <span class="email-text">{{ row[col] or 'N/A' }}</span>
+                                {% elif col == 'website_url' or col == 'source_url' %}
+                                    {% if row[col] %}
+                                    <a href="{{ row[col] }}" target="_blank" class="domain-link">
+                                        {{ row[col].replace('https://', '').replace('http://', '').replace('www.', '')[:30] }}...
+                                    </a>
+                                    {% else %}
+                                    N/A
+                                    {% endif %}
+                                {% elif col == 'role' %}
+                                    <span class="role-badge badge-{{ row[col].lower().replace(' ', '-') }}">
+                                        {{ row[col] }}
+                                    </span>
+                                {% else %}
+                                    {{ row[col] or 'N/A' }}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="glass-card empty-state">
+                <i class="fa-solid fa-ban gold-text"></i>
+                <h2>No Rows Match Clean Heuristics</h2>
+                <p>Every record in the uploaded file lacked a valid email or phone number. Review your raw file's contents and re-upload.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Removed & Duplicates Tab Content -->
+    <div class="tab-content" id="preview-removed-tab">
+        <div style="margin-bottom: 12px;">
+            <h4 style="color: var(--text-primary); margin: 0; font-family: var(--font-header);"><i class="fa-solid fa-trash-can"></i> Removed & Duplicate Data Preview <span class="preview-note">(showing first {{ removed_data|length }} records)</span></h4>
+        </div>
+        
+        {% if removed_data %}
+        <div class="table-container glass-card" style="max-height: 450px; overflow-y: auto;">
+            <table class="contacts-table">
+                <thead>
+                    <tr>
+                        <th>Status / Reason</th>
+                        {% for col in columns %}
+                        <th>
+                            {% if col == 'college_name' %}College Name
+                            {% elif col == 'website_url' %}Website URL
+                            {% elif col == 'person_name' %}Contact Name
+                            {% elif col == 'role' %}Role
+                            {% elif col == 'department' %}Department
+                            {% elif col == 'email' %}Email Address
+                            {% elif col == 'phone' %}Phone
+                            {% elif col == 'address' %}Address
+                            {% elif col == 'source_url' %}Source URL
+                            {% else %}{{ col }}
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in removed_data %}
+                    <tr style="opacity: 0.7; background: rgba(239, 68, 68, 0.01);">
+                        <td>
+                            <span class="badge" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                                {{ row['refiner_status'] or 'Removed' }}
+                            </span>
+                        </td>
+                        {% for col in columns %}
+                        <td>
+                            {% if col == 'email' %}
+                                <span class="email-text">{{ row[col] or 'N/A' }}</span>
+                            {% elif col == 'website_url' or col == 'source_url' %}
+                                {% if row[col] %}
+                                <a href="{{ row[col] }}" target="_blank" class="domain-link">
+                                    {{ row[col].replace('https://', '').replace('http://', '').replace('www.', '')[:30] }}...
+                                </a>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            {% elif col == 'role' %}
+                                <span class="role-badge badge-{{ row[col].lower().replace(' ', '-') }}">
+                                    {{ row[col] }}
+                                </span>
+                            {% else %}
+                                {{ row[col] or 'N/A' }}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="glass-card empty-state" style="padding: 40px; text-align: center;">
+            <i class="fa-solid fa-circle-check" style="font-size: 48px; color: #10b981; margin-bottom: 16px;"></i>
+            <h2>Zero Rows Flagged as Duplicates/Junk</h2>
+            <p>Excellent! The uploaded dataset was completely clean. No records were filtered out during refinement.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- AI Filter JavaScript -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Refiner Results Tab Switching
+    const tabButtons = document.querySelectorAll(".results-preview-section .tab-btn");
+    const tabContents = document.querySelectorAll(".results-preview-section .tab-content");
+    
+    tabButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetTab = btn.getAttribute("data-tab");
+            
+            tabButtons.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            
+            tabContents.forEach(c => c.classList.remove("active"));
+            const activePanel = document.getElementById(targetTab);
+            if (activePanel) {
+                activePanel.classList.add("active");
+            }
+        });
+    });
+
+    // 2. AI Query Execution
+    const btnSubmit = document.getElementById("btn-submit-dataset-query");
+    const btnReset = document.getElementById("btn-reset-dataset-query");
+    const inputQuery = document.getElementById("ai-dataset-query");
+    const statusDiv = document.getElementById("ai-query-status");
+    const filterBadgeDiv = document.getElementById("ai-query-active-filter");
+    const activeFilterText = document.getElementById("active-filter-text");
+    
+    const resultsArea = document.getElementById("ai-query-results-area");
+    const defaultArea = document.getElementById("default-clean-preview-area");
+    const filteredCount = document.getElementById("ai-filtered-count");
+    const generatedSql = document.getElementById("ai-generated-sql");
+    const tableBody = document.querySelector("#ai-filtered-table tbody");
+    
+    const columns = {{ columns | tojson }};
+    const fileId = "{{ file_id }}";
+
+    if (btnSubmit && inputQuery) {
+        btnSubmit.addEventListener("click", runAIQuery);
+        inputQuery.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") runAIQuery();
+        });
+    }
+
+    if (btnReset) {
+        btnReset.addEventListener("click", resetAIQuery);
+    }
+
+    function runAIQuery() {
+        const query = inputQuery.value.trim();
+        if (!query) return;
+
+        statusDiv.style.display = "flex";
+        btnSubmit.disabled = true;
+
+        fetch(`/refiner/query/${fileId}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(res => res.json())
+        .then(data => {
+            statusDiv.style.display = "none";
+            btnSubmit.disabled = false;
+
+            if (data.status === "success") {
+                // Show filter indicators
+                filterBadgeDiv.style.display = "flex";
+                activeFilterText.textContent = `Showing: ${query}`;
+                
+                // Show/hide areas
+                defaultArea.style.display = "none";
+                resultsArea.style.display = "block";
+                
+                // Render query text & count
+                filteredCount.textContent = data.count;
+                generatedSql.textContent = data.query;
+                
+                // Render table rows
+                tableBody.innerHTML = "";
+                if (data.data.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="${columns.length}" style="text-align: center; color: var(--text-muted); padding: 30px;"><i class="fa-solid fa-ban"></i> No records match this query.</td></tr>`;
+                    return;
+                }
+
+                data.data.forEach(row => {
+                    const tr = document.createElement("tr");
+                    columns.forEach(col => {
+                        const td = document.createElement("td");
+                        const val = row[col] || '';
+                        
+                        if (col === 'email') {
+                            td.innerHTML = val ? `<span class="email-text">${val}</span>` : 'N/A';
+                        } else if (col === 'website_url' || col === 'source_url') {
+                            if (val) {
+                                const cleanDomain = val.replace('https://', '').replace('http://', '').replace('www.', '').substring(0, 30);
+                                td.innerHTML = `<a href="${val}" target="_blank" class="domain-link">${cleanDomain}...</a>`;
+                            } else {
+                                td.textContent = 'N/A';
+                            }
+                        } else if (col === 'role') {
+                            const badgeClass = val.toLowerCase().replace(/\s+/g, '-');
+                            td.innerHTML = `<span class="role-badge badge-${badgeClass}">${val}</span>`;
+                        } else {
+                            td.textContent = val || 'N/A';
+                        }
+                        tr.appendChild(td);
+                    });
+                    tableBody.appendChild(tr);
+                });
+            } else {
+                alert("AI Query failed: " + data.message);
+            }
+        })
+        .catch(err => {
+            statusDiv.style.display = "none";
+            btnSubmit.disabled = false;
+            console.error("AI Query Error:", err);
+            alert("An error occurred while running the AI query.");
+        });
+    }
+
+    function resetAIQuery() {
+        inputQuery.value = "";
+        filterBadgeDiv.style.display = "none";
+        resultsArea.style.display = "none";
+        defaultArea.style.display = "block";
+    }
+});
+</script>
+{% endblock %}

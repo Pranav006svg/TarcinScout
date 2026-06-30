@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <h1 class="gradient-text">Inbuilt Contact Data Refiner</h1>
+    <p class="hero-subtitle">Upload your raw scraped contact spreadsheets (Excel/CSV) to clean junk, format phone numbers, validate emails, and structure roles instantly.</p>
+</div>
+
+<div class="scraping-form-container">
+    <div class="glass-card scraper-card">
+        <form action="{{ url_for('refine') }}" method="POST" enctype="multipart/form-data" id="refiner-form">
+            <div class="upload-drag-area" id="refiner-drag-area">
+                <i class="fa-solid fa-wand-magic-sparkles upload-icon refiner-upload-icon"></i>
+                <p class="upload-text">Drag & drop raw Excel or CSV here, or <span class="gold-text font-weight-bold">browse</span></p>
+                <p class="upload-subtext">Supports file columns like College Name, Website URL, Email Address, Contact Name, Role, etc.</p>
+                <input type="file" name="file" id="refiner-file-input" accept=".csv, .xlsx, .xls" style="display: block; margin: 15px auto 0 auto; font-size: 14px; color: var(--text-secondary);" required>
+            </div>
+            
+            <div class="selected-file-row" id="refiner-file-selected" style="display: none;">
+                <div class="file-info">
+                    <i class="fa-solid fa-file-excel file-icon"></i>
+                    <span id="refiner-filename">raw_contacts.xlsx</span>
+                    <span class="file-size" id="refiner-filesize">(0 KB)</span>
+                </div>
+                <div class="file-actions">
+                    <button type="button" class="btn btn-danger-outline btn-sm" id="btn-remove-refiner-file">
+                        <i class="fa-solid fa-times"></i> Remove
+                    </button>
+                    <button type="submit" class="btn btn-gold btn-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Clean Data
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-feedback" id="refiner-form-error"></div>
+        </form>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="glass-card feature-card">
+        <div class="feature-icon-wrapper gold-bg">
+            <i class="fa-solid fa-phone-volume gold-text"></i>
+        </div>
+        <h3>Phone Standardization</h3>
+        <p>Strips country codes (e.g. <code>+91</code>), identifies landlines versus mobile numbers, and formats all numbers cleanly as <code>XXXXX XXXXX</code>.</p>
+    </div>
+    
+    <div class="glass-card feature-card">
+        <div class="feature-icon-wrapper rose-bg">
+            <i class="fa-solid fa-envelope-circle-check rose-text"></i>
+        </div>
+        <h3>Email Validation</h3>
+        <p>Removes invalid email syntaxes, checks for common domain typos, and automatically filters out placeholder addresses (e.g. <code>test@test.com</code>).</p>
+    </div>
+    
+    <div class="glass-card feature-card">
+        <div class="feature-icon-wrapper emerald-bg">
+            <i class="fa-solid fa-user-shield emerald-text"></i>
+        </div>
+        <h3>Heuristic Classifications</h3>
+        <p>Standardizes text names into Title Case. Automatically assigns roles (Principal, HOD, TPO) and departments based on keyword scans.</p>
+    </div>
+</div>
+
+<!-- Loading Overlay during Refinement -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content glass-card">
+        <div class="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="spider-spinner">
+                <img src="{{ url_for('static', filename='images/tarcin-t-logo.png') }}" alt="TarcinScout Logo" class="spinner-logo">
+            </div>
+        </div>
+        <h2>Refining Contact Dataset...</h2>
+        <p class="loading-status">Applying regex cleaners, parsing column structures, and deduplicating rows...</p>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" style="width: 70%; animation: pulse 1.5s infinite ease-in-out;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

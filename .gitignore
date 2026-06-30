@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Databases
+*.db
+*.sqlite3
+
+# Environment configurations
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDEs / System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# CSV/Excel Exports
+college_scraper_project/exports/
+exports/
+*.csv
+*.xlsx

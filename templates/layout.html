@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A premium Flask-based web application to crawl and extract public contact data from college websites.">
+    <title>TarcinScout — AI-Powered College Contact Scraper</title>
+    <!-- Google Fonts -->
+    <script>
+        // Inline theme helper to prevent FOUC (Flash of Unstyled Content)
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='1.4') }}">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/tarcin-t-logo.png') }}" alt="TarcinScout Logo" class="header-logo">
+                <span class="logo-title">TARCIN<span class="gold-text">SCOUT</span></span>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">
+                    <i class="fa-solid fa-home"></i> Home
+                </a>
+                <a href="{{ url_for('results') }}" class="{% if request.path == '/results' %}active{% endif %}">
+                    <i class="fa-solid fa-table"></i> Scraped Contacts
+                </a>
+                <a href="{{ url_for('refiner') }}" class="{% if request.path.startswith('/refiner') or request.path == '/refine' %}active{% endif %}">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Data Refiner
+                </a>
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+                    <i id="theme-toggle-icon" class="fa-solid fa-moon"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">
+                            <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'error' %}fa-circle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+                            <span>{{ message }}</span>
+                            <button class="close-flash" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+        <p>&copy; 2026 TarcinScout. Open-source scraper designed for administrative and academic contact discovery. Respect robots.txt.</p>
+    </footer>
+
+    <!-- Script file -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

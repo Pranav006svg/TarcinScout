@@ -1,0 +1,24 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRESQL_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model CollegeContact {
+  id           Int      @id @default(autoincrement())
+  college_name String?  @map("college_name")
+  website_url  String?  @map("website_url")
+  person_name  String?  @map("person_name")
+  role         String?  @map("role")
+  department   String?  @map("department")
+  email        String?  @map("email")
+  phone        String?  @map("phone")
+  address      String?  @map("address")
+  source_url   String?  @map("source_url")
+  scraped_at   DateTime @default(now()) @map("scraped_at")
+
+  @@map("college_contacts")
+}

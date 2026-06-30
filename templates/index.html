@@ -1,0 +1,209 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <h1 class="gradient-text">College Contact Data Scraper</h1>
+    <p class="hero-subtitle">Retrieve administrative and academic contacts instantly by crawling institutional domains.</p>
+</div>
+
+<div class="scraping-form-container">
+    <div class="glass-card scraper-card">
+        <div class="tabs-header">
+            <button class="tab-btn active" data-tab="single-tab">
+                <i class="fa-solid fa-link"></i> Single URL
+            </button>
+            <button class="tab-btn ai-tab-btn" data-tab="ai-discovery-tab">
+                <i class="fa-solid fa-brain"></i> AI Discovery
+                <span class="ai-badge">AI</span>
+            </button>
+        </div>
+        
+        <!-- Tab Content 1: Single URL -->
+        <div class="tab-content active" id="single-tab">
+            <form action="{{ url_for('scrape') }}" method="POST" id="scrape-form">
+                <div class="input-group-row">
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-globe input-icon"></i>
+                        <input type="text" name="url" id="college-url" placeholder="Enter college URL (e.g. www.examplecollege.ac.in)" required>
+                    </div>
+                    <button type="submit" class="btn btn-gold">
+                        <i class="fa-solid fa-circle-play"></i> Start Scrape
+                    </button>
+                </div>
+                <div class="input-wrapper" style="margin-top: 15px;">
+                    <i class="fa-solid fa-wand-magic-sparkles input-icon" style="color: #8b5cf6;"></i>
+                    <input type="text" name="custom_directives" id="custom-directives" placeholder="Extraction Directives (e.g., 'Only CSE HOD and Placement Officers', 'Exclude faculty')">
+                </div>
+                <div class="form-feedback" id="form-error"></div>
+            </form>
+        </div>
+        
+        <!-- Tab Content 2: AI Discovery -->
+        <div class="tab-content" id="ai-discovery-tab">
+            <div class="ai-discovery-container">
+                <!-- Sub-mode selector -->
+                <div class="ai-mode-selector">
+                    <button class="ai-mode-btn active" data-ai-mode="region">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        <span>Region Search</span>
+                        <small>Find ALL colleges in a state/city</small>
+                    </button>
+                    <button class="ai-mode-btn" data-ai-mode="names">
+                        <i class="fa-solid fa-building-columns"></i>
+                        <span>College Names</span>
+                        <small>Search specific colleges by name</small>
+                    </button>
+                    <button class="ai-mode-btn" data-ai-mode="upload">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                        <span>Bulk Upload</span>
+                        <small>Upload CSV/Excel of names or URLs</small>
+                    </button>
+                </div>
+
+                <!-- AI Mode: Region Search -->
+                <div class="ai-mode-panel active" id="ai-mode-region">
+                    <div class="ai-input-group">
+                        <div class="input-wrapper ai-input-wrapper">
+                            <i class="fa-solid fa-map-location-dot input-icon"></i>
+                            <input type="text" id="ai-region-input" placeholder="Enter state, city, or district (e.g. Tamil Nadu, Chennai, Coimbatore)">
+                        </div>
+                        <div class="ai-filter-row">
+                            <label class="ai-filter-label">Institution Type:</label>
+                            <select id="ai-institution-type" class="ai-select">
+                                <option value="all">All Types</option>
+                                <option value="engineering">Engineering</option>
+                                <option value="medical">Medical</option>
+                                <option value="arts">Arts & Science</option>
+                                <option value="science">Science</option>
+                            </select>
+                        </div>
+                        <div class="input-wrapper ai-input-wrapper" style="margin-top: 10px;">
+                            <i class="fa-solid fa-wand-magic-sparkles input-icon" style="color: #8b5cf6;"></i>
+                            <input type="text" id="ai-region-directives" placeholder="Extraction Directives (e.g. Only principal and placement cell)">
+                        </div>
+                        <button type="button" class="btn btn-ai" id="btn-ai-region-search" style="margin-top: 10px;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Discover & Extract
+                        </button>
+                    </div>
+                    <p class="ai-hint"><i class="fa-solid fa-circle-info"></i> AI will search NAAC databases + Google to find all colleges, then extract contacts using Gemini AI.</p>
+                </div>
+
+                <!-- AI Mode: College Names -->
+                <div class="ai-mode-panel" id="ai-mode-names">
+                    <div class="ai-input-group">
+                        <div class="input-wrapper ai-input-wrapper ai-textarea-wrapper">
+                            <i class="fa-solid fa-building-columns input-icon textarea-icon"></i>
+                            <textarea id="ai-names-input" rows="4" placeholder="Enter college names (one per line or comma-separated)&#10;&#10;Example:&#10;Anna University&#10;SRM Institute of Science and Technology&#10;VIT Vellore"></textarea>
+                        </div>
+                        <div class="input-wrapper ai-input-wrapper" style="margin-top: 10px;">
+                            <i class="fa-solid fa-wand-magic-sparkles input-icon" style="color: #8b5cf6;"></i>
+                            <input type="text" id="ai-names-directives" placeholder="Extraction Directives (e.g. Only Principal)">
+                        </div>
+                        <button type="button" class="btn btn-ai" id="btn-ai-names-search" style="margin-top: 10px;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Find & Extract
+                        </button>
+                    </div>
+                    <p class="ai-hint"><i class="fa-solid fa-circle-info"></i> AI will find the official website for each college, then extract all contacts using Gemini AI.</p>
+                </div>
+
+                <!-- AI Mode: Bulk Upload -->
+                <div class="ai-mode-panel" id="ai-mode-upload">
+                    <form id="ai-upload-form" enctype="multipart/form-data">
+                        <div class="upload-drag-area" id="ai-drag-area">
+                            <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                            <p class="upload-text">Upload CSV/Excel with <span class="ai-text font-weight-bold">college names</span> or <span class="ai-text font-weight-bold">website URLs</span></p>
+                            <p class="upload-subtext">System auto-detects whether entries are names or URLs and processes accordingly.</p>
+                            <input type="file" name="file" id="ai-file-input" accept=".csv, .xlsx, .xls" style="display: block; margin: 15px auto 0 auto; font-size: 14px; color: var(--text-secondary);">
+                        </div>
+                        <div class="input-wrapper ai-input-wrapper" style="margin-top: 12px;">
+                            <i class="fa-solid fa-wand-magic-sparkles input-icon" style="color: #8b5cf6;"></i>
+                            <input type="text" name="custom_directives" id="ai-upload-directives" placeholder="Extraction Directives (e.g. Only principal)">
+                        </div>
+                        <div class="selected-file-row" id="ai-file-selected" style="display: none;">
+                            <div class="file-info">
+                                <i class="fa-solid fa-file-csv file-icon"></i>
+                                <span id="ai-filename">filename.csv</span>
+                                <span class="file-size" id="ai-filesize">(0 KB)</span>
+                            </div>
+                            <div class="file-actions">
+                                <button type="button" class="btn btn-danger-outline btn-sm" id="btn-remove-ai-file">
+                                    <i class="fa-solid fa-times"></i> Remove
+                                </button>
+                                <button type="submit" class="btn btn-ai btn-sm">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Start AI Extraction
+                                </button>
+                            </div>
+                        </div>
+                        <div class="template-download-link-container" style="margin-top: 12px; text-align: center;">
+                            <a href="#" onclick="downloadUrlTemplate(event)" class="template-download-link" style="color: #8b5cf6; text-decoration: none; font-size: 13px;">
+                                <i class="fa-solid fa-download"></i> Download Template (Excel/CSV)
+                            </a>
+                        </div>
+                    </form>
+                    <div class="form-feedback" id="ai-form-error"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="glass-card feature-card">
+        <div class="feature-icon-wrapper rose-bg">
+            <i class="fa-solid fa-sitemap rose-text"></i>
+        </div>
+        <h3>Recursive Crawling</h3>
+        <p>Crawls up to <strong>Depth 2</strong> (homepage and links on homepage) scanning for contact-specific pages using target keywords.</p>
+    </div>
+    
+    <div class="glass-card feature-card">
+        <div class="feature-icon-wrapper gold-bg">
+            <i class="fa-solid fa-brain gold-text"></i>
+        </div>
+        <h3>Gemini AI Extraction</h3>
+        <p>Uses <strong>Gemini 2.5 Flash</strong> to intelligently read and understand any HTML layout — no regex limitations.</p>
+    </div>
+    
+    <div class="glass-card feature-card">
+        <div class="feature-icon-wrapper emerald-bg">
+            <i class="fa-solid fa-magnifying-glass-location emerald-text"></i>
+        </div>
+        <h3>Smart Discovery</h3>
+        <p>Finds <strong>ALL colleges</strong> in any state or city automatically by searching NAAC + Google databases.</p>
+    </div>
+</div>
+
+<!-- Loading Overlay (Visible during scraping process) -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content glass-card">
+        <div class="spinner-container" id="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="spider-spinner">
+                <img src="{{ url_for('static', filename='images/tarcin-t-logo.png') }}" alt="TarcinScout Logo" class="spinner-logo">
+            </div>
+        </div>
+        <h2 id="loading-title">Scraping Domain...</h2>
+        <p class="loading-status" id="loading-status-text">Connecting to server and parsing homepage links...</p>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        
+        <!-- Bulk Log & Stats Container -->
+        <div class="bulk-progress-details" id="bulk-progress-details" style="display: none;">
+            <div class="bulk-stats">
+                <span id="bulk-progress-ratio">Completed 0 of 0 URLs</span>
+                <span id="bulk-percent-complete" class="gold-text font-weight-bold">0%</span>
+            </div>
+            <div class="bulk-log-container" id="bulk-log-container">
+                <!-- Dynamically populated logging rows -->
+            </div>
+        </div>
+        
+        <div class="tips-container" id="tips-container">
+            <p class="tip-text"><i class="fa-solid fa-lightbulb gold-text"></i> <span>Polite delay (0.5s) is active to prevent server overloading.</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
